@@ -7,7 +7,14 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
-const INDEX = fs.readFileSync(path.join(__dirname, 'public', 'index.html'));
+// Google Search Console: set GOOGLE_SITE_VERIFICATION in Render's Environment Variables
+// and the verification meta tag is added to the page automatically.
+const GSV = String(process.env.GOOGLE_SITE_VERIFICATION || '').trim().replace(/[^A-Za-z0-9_-]/g, '');
+let INDEX = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+if (GSV && !INDEX.includes('google-site-verification')) {
+  INDEX = INDEX.replace('<head>', `<head>\n<meta name="google-site-verification" content="${GSV}">`);
+}
+INDEX = Buffer.from(INDEX, 'utf8');
 const ROOM_RE = /^[a-z0-9][a-z0-9_.-]{0,47}$/;
 const TOPIC_RE = /^[a-z][a-z0-9_.-]{0,47}$/;
 const MAX_PEERS_PER_ROOM = 16;
