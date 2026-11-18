@@ -43,6 +43,23 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
     return res.end(INDEX);
   }
+  // search engines: robots.txt + sitemap.xml (address taken from the request, so it works on any domain)
+  if (req.method === 'GET' && (url.pathname === '/robots.txt' || url.pathname === '/sitemap.xml')) {
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').replace(/[^a-zA-Z0-9.:-]/g, '');
+    const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0] === 'http' ? 'http' : 'https';
+    const base = `${proto}://${host}`;
+    if (url.pathname === '/robots.txt') {
+      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+      return res.end(`User-agent: *\nAllow: /\n\nSitemap: ${base}/sitemap.xml\n`);
+    }
+    res.writeHead(200, { 'content-type': 'application/xml; charset=utf-8' });
+    return res.end(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${base}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n</urlset>\n`);
+  }
+  // Google Search Console ownership file (e.g. public/google1234abcd.html)
+  if (req.method === 'GET' && /^\/google[0-9a-z]+\.html$/.test(url.pathname)) {
+    const f = path.join(__dirname, 'public', path.basename(url.pathname));
+    if (fs.existsSync(f)) { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); return res.end(fs.readFileSync(f)); }
+  }
   // keep-alive / health check: the page calls this every 4 minutes while open
   if (url.pathname === '/ping') {
     res.writeHead(200, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
